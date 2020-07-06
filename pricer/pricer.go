@@ -3,7 +3,7 @@ package pricer
 import (
 	"context"
 	"fmt"
-	"livepool/usd-pricing/client"
+	"livepool/usd-pricing/feeder"
 	"math/big"
 	"regexp"
 	"strings"
@@ -15,17 +15,17 @@ import (
 const maxDecimals = 18
 
 type Pricer struct {
-	client            *client.Client
+	feeder            *feeder.Feeder
 	ticker            *time.Ticker
 	basePriceUSD      *big.Rat
 	minDeltaForUpdate *big.Rat
 	quit              chan struct{}
 }
 
-func NewPricer(client *client.Client, basepriceUSD, minDeltaForUpdate *big.Rat, pollingInterval time.Duration) *Pricer {
+func NewPricer(feeder *feeder.Feeder, basepriceUSD, minDeltaForUpdate *big.Rat, pollingInterval time.Duration) *Pricer {
 	ticker := time.NewTicker(pollingInterval)
 	return &Pricer{
-		client,
+		feeder,
 		ticker,
 		basepriceUSD,
 		minDeltaForUpdate,
@@ -35,8 +35,7 @@ func NewPricer(client *client.Client, basepriceUSD, minDeltaForUpdate *big.Rat, 
 
 func (p *Pricer) Start() error {
 	ctx := context.Background()
-	last, err := p.client.ETHUSD(ctx)
-	glog.Infof("last ETHUSD Price: %v", last)
+	last, err := p.feeder.ETHUSD(ctx)
 	if err != nil {
 		return err
 	}
@@ -45,12 +44,10 @@ func (p *Pricer) Start() error {
 		case <-p.quit:
 			return nil
 		case <-p.ticker.C:
-			newPrice, err := p.client.ETHUSD(context.Background())
+			newPrice, err := p.feeder.ETHUSD(context.Background())
 			if err != nil {
 				return err
 			}
-
-			glog.Infof("Received new price %v", newPrice)
 
 			// if the price is within an acceptable range of the last price
 			// there is no need to update prematurely
@@ -58,13 +55,15 @@ func (p *Pricer) Start() error {
 				continue
 			}
 
+			glog.Infof("ETHUSD price change last=%v new=%v", last, newPrice)
+
 			pixelPrice, err := p.pixelPrice(newPrice)
 			if err != nil {
 				glog.Error(err)
 				continue
 			}
 
-			if err := p.client.PostPriceUpdate(context.Background(), pixelPrice); err != nil {
+			if err := p.feeder.PostPriceUpdate(context.Background(), pixelPrice); err != nil {
 				glog.Error(err)
 			}
 		}

@@ -1,4 +1,4 @@
-package client
+package feeder
 
 import (
 	"bytes"
@@ -24,13 +24,13 @@ type Feed interface {
 	ETHUSD(context.Context) (*big.Rat, error)
 }
 
-type Client struct {
+type Feeder struct {
 	feeds  []Feed
 	node   string
 	isOrch bool
 }
 
-func NewClient(node string, feeds []Feed) (*Client, error) {
+func NewFeeder(node string, feeds []Feed) (*Feeder, error) {
 	res, err := http.Get(node + "/IsOrchestrator")
 	if err != nil {
 		return nil, err
@@ -46,17 +46,17 @@ func NewClient(node string, feeds []Feed) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{
+	return &Feeder{
 		feeds,
 		node,
 		isOrch,
 	}, nil
 }
 
-func (c *Client) ETHUSD(ctx context.Context) (*big.Rat, error) {
+func (f *Feeder) ETHUSD(ctx context.Context) (*big.Rat, error) {
 	// Get USD prices from the feeds
 	var wg sync.WaitGroup
-	num := len(c.feeds)
+	num := len(f.feeds)
 	prices := make([]*big.Rat, 0)
 	priceCh := make(chan *big.Rat, num)
 
@@ -72,7 +72,7 @@ func (c *Client) ETHUSD(ctx context.Context) (*big.Rat, error) {
 		wg.Done()
 	}
 
-	for _, feed := range c.feeds {
+	for _, feed := range f.feeds {
 		wg.Add(1)
 		go getPrice(feed)
 	}
@@ -99,10 +99,10 @@ func (c *Client) ETHUSD(ctx context.Context) (*big.Rat, error) {
 	return getMedian(cleanedPrices), nil
 }
 
-func (c *Client) PostPriceUpdate(ctx context.Context, pricePerPixel *big.Rat) error {
-	uri := c.node + orchEndpint
-	if !c.isOrch {
-		uri = c.node + bcastEndpoint
+func (f *Feeder) PostPriceUpdate(ctx context.Context, pricePerPixel *big.Rat) error {
+	uri := f.node + orchEndpint
+	if !f.isOrch {
+		uri = f.node + bcastEndpoint
 	}
 
 	val := url.Values{
@@ -110,8 +110,7 @@ func (c *Client) PostPriceUpdate(ctx context.Context, pricePerPixel *big.Rat) er
 		"pixelsPerUnit": {pricePerPixel.Denom().String()},
 	}
 
-	glog.Infof("Posting pixel price update %v wei/pixel", pricePerPixel.FloatString(1))
-
+	glog.Infof("Sending price per pixel update pricePerUnit=%v pixelsPerUnit=%v", pricePerPixel.Num(), pricePerPixel.Denom())
 	return httpPostWithParams(uri, val)
 }
 

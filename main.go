@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"livepool/usd-pricing/client"
+	"fmt"
+	"livepool/usd-pricing/feeder"
 	gecko "livepool/usd-pricing/feeds/coingecko"
 	"livepool/usd-pricing/pricer"
 	"math/big"
@@ -30,7 +31,7 @@ func defaultAddr(addr, defaultHost, defaultPort string) string {
 	return addr
 }
 
-func startFeed(feed string) client.Feed {
+func startFeed(feed string) feeder.Feed {
 	switch feed {
 	case "coingecko":
 		return gecko.NewGecko()
@@ -55,11 +56,10 @@ func main() {
 	flag.Parse()
 	vFlag.Value.Set(*verbosity)
 
-	glog.Info("** Welcome to the Pricer **")
-	glog.Info("This service changes your node's pricing based on the current ETHUSD exchange rate")
-	glog.Info("\n")
-	glog.Infof("** You will currently charge $ %v per million pixels **", *price)
-	glog.Info("\n")
+	fmt.Println("** Welcome to the Pricer **")
+	fmt.Println("This service changes your node's pricing based on the current ETHUSD exchange rate")
+	fmt.Printf("You will currently charge $ %v per million pixels **\n", *price)
+	fmt.Println("")
 	nodeAddr := defaultAddr(*node, "127.0.0.1", httpPort)
 	if !strings.HasPrefix(nodeAddr, "http") {
 		nodeAddr = "http://" + nodeAddr
@@ -77,7 +77,7 @@ func main() {
 		glog.Errorf("provided price delta is not a valid float string: %v", *minUpdateDelta)
 	}
 
-	var feeds []client.Feed
+	var feeds []feeder.Feed
 	if len(*feed) > 0 {
 		for _, feed := range strings.Split(*feed, ",") {
 			feed = strings.TrimSpace(feed)
@@ -94,13 +94,13 @@ func main() {
 		return
 	}
 
-	client, err := client.NewClient(nodeAddr, feeds)
+	feeder, err := feeder.NewFeeder(nodeAddr, feeds)
 	if err != nil {
-		glog.Errorf("Unable to start client: %v", err)
+		glog.Errorf("Unable to start feeder: %v", err)
 		return
 	}
 
-	pricer := pricer.NewPricer(client, priceRat, delta, *pollingInterval)
+	pricer := pricer.NewPricer(feeder, priceRat, delta, *pollingInterval)
 
 	errCh := make(chan error)
 	go func() {
