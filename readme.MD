@@ -8,6 +8,8 @@
 
 `$ usd-pricing`
 
+* NOTE: It's highly recommended to run this tool on the same host as the actual Livepeer node as exposing your CLI webserver endpoint over the open internet currently has serious security implications as there is no authentication for the server. 
+
 ## Options
 
 | Flag     | type | default | description |
