@@ -17,8 +17,8 @@ import (
 
 var httpTimeout = 5 * time.Second
 
-var bcastEndpoint = "/setBroadcastMaxPrice"
-var orchEndpint = "/setOrchestratorPrice"
+var bcastEndpoint = "/setBroadcastConfig"
+var orchEndpoint = "/setOrchestratorConfig"
 
 type Feed interface {
 	ETHUSD(context.Context) (*big.Rat, error)
@@ -100,14 +100,17 @@ func (f *Feeder) ETHUSD(ctx context.Context) (*big.Rat, error) {
 }
 
 func (f *Feeder) PostPriceUpdate(ctx context.Context, pricePerPixel *big.Rat) error {
-	uri := f.node + orchEndpint
-	if !f.isOrch {
-		uri = f.node + bcastEndpoint
-	}
-
+	uri := f.node + orchEndpoint
 	val := url.Values{
 		"pricePerUnit":  {pricePerPixel.Num().String()},
 		"pixelsPerUnit": {pricePerPixel.Denom().String()},
+	}
+	if !f.isOrch {
+		uri = f.node + bcastEndpoint
+		val = url.Values{
+			"maxPricePerUnit": {pricePerPixel.Num().String()},
+			"pixelsPerUnit":   {pricePerPixel.Denom().String()},
+		}
 	}
 
 	glog.Infof("Sending price per pixel update pricePerUnit=%v pixelsPerUnit=%v", pricePerPixel.Num(), pricePerPixel.Denom())
