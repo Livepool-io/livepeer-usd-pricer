@@ -35,15 +35,29 @@ func NewPricer(feeder *feeder.Feeder, basepriceUSD, minDeltaForUpdate *big.Rat, 
 
 func (p *Pricer) Start() error {
 	ctx := context.Background()
+
 	last, err := p.feeder.ETHUSD(ctx)
 	if err != nil {
 		return err
 	}
+	glog.Infof("initial ETHUSD price: %v", last.FloatString(2))
+	// kick off pricer
+	pixelPrice, err := p.pixelPrice(last)
+	if err != nil {
+		return err
+	}
+	glog.Infof("initial pixel price: %v", pixelPrice.FloatString(2))
+
+	if err := p.feeder.PostPriceUpdate(context.Background(), pixelPrice); err != nil {
+		return err
+	}
+
 	for {
 		select {
 		case <-p.quit:
 			return nil
 		case <-p.ticker.C:
+
 			newPrice, err := p.feeder.ETHUSD(context.Background())
 			if err != nil {
 				return err
@@ -55,7 +69,7 @@ func (p *Pricer) Start() error {
 				continue
 			}
 
-			glog.Infof("ETHUSD price change last=%v new=%v", last, newPrice)
+			glog.Infof("ETHUSD price change last=%v new=%v", last.FloatString(2), newPrice.FloatString(2))
 
 			pixelPrice, err := p.pixelPrice(newPrice)
 			if err != nil {
@@ -66,6 +80,8 @@ func (p *Pricer) Start() error {
 			if err := p.feeder.PostPriceUpdate(context.Background(), pixelPrice); err != nil {
 				glog.Error(err)
 			}
+
+			last = newPrice
 		}
 
 	}
@@ -78,7 +94,7 @@ func (p *Pricer) Stop() {
 func (p *Pricer) pixelPrice(usdPrice *big.Rat) (*big.Rat, error) {
 	wei, err := toBaseAmount(new(big.Rat).Mul(
 		p.basePriceUSD,
-		usdPrice.Inv(usdPrice),
+		new(big.Rat).Inv(usdPrice),
 	).FloatString(18))
 
 	if err != nil {

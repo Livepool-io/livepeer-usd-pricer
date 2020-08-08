@@ -104,6 +104,7 @@ func main() {
 
 	errCh := make(chan error)
 	go func() {
+		glog.Info("Starting Pricer")
 		errCh <- pricer.Start()
 	}()
 
