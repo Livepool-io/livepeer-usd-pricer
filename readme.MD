@@ -2,11 +2,11 @@
 
 ## Build 
 
-`$ go build .`
+`$ go build`
 
 ## Start 
 
-`$ usd-pricing`
+`$ ./usd-pricing`
 
 * NOTE: It's highly recommended to run this tool on the same host as the actual Livepeer node as exposing your CLI webserver endpoint over the open internet currently has serious security implications as there is no authentication for the server. 
 
@@ -35,3 +35,19 @@ The `ETHUSD` method to be implemented is a remote call to a price service. This 
 After you create a `Feed` implementation for the API of your choice, add the feed to the switch statement in the `startFeed()` function in `main.go`. If the API requires an API key you should also add a flag for that. 
 
 Feel free to submit a PR for additional feeds ! 
+
+
+### Example 
+
+```
+$ ./usd-pricing -node http://localhost:7936 -price 0.05 -priceDelta 0.00001 -pollingInterval 10s
+
+** Welcome to the Pricer **
+This service changes your node's pricing based on the current ETHUSD exchange rate
+You will currently charge $ 0.05 per million pixels **
+
+I0808 19:46:51.342354   16324 main.go:107] Starting Pricer
+I0808 19:46:52.185037   16324 pricer.go:43] initial ETHUSD price: 391.67
+I0808 19:46:52.185179   16324 pricer.go:49] initial pixel price: 127658488.00
+I0808 19:46:52.185194   16324 feeder.go:116] Sending price per pixel update pricePerUnit=127658488 pixelsPerUnit=1
+```
