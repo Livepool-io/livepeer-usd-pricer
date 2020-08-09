@@ -13,6 +13,7 @@ import (
 )
 
 const maxDecimals = 18
+const divisor = 1000000
 
 type Pricer struct {
 	feeder            *feeder.Feeder
@@ -101,7 +102,7 @@ func (p *Pricer) pixelPrice(usdPrice *big.Rat) (*big.Rat, error) {
 		return nil, err
 	}
 
-	return new(big.Rat).SetFrac(wei, big.NewInt(1)), nil
+	return new(big.Rat).SetFrac(wei, big.NewInt(divisor)), nil
 }
 
 func isWithinDelta(newPrice, last, delta *big.Rat) bool {
